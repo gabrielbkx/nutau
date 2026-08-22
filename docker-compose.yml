@@ -1,0 +1,69 @@
+services:
+  # Banco de Dados
+  postgres:
+    image: postgres:16-alpine
+    container_name: nutau-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+      POSTGRES_DB: nutau_db
+    ports:
+      # 5433 no host porque a 5432 ja esta ocupada por um PostgreSQL nativo do Windows.
+      # Dentro da rede do compose o Postgres continua na 5432 normalmente.
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d nutau_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Mensageria para Tarefas e Retentativas (com Painel Web)
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: nutau-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: adminpassword
+    ports:
+      - "5672:5672"   # Porta AMQP para a aplicacao Spring Boot
+      - "15672:15672" # Porta para o painel de administracao web UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Mensageria para Eventos de Dominio (Modo KRaft sem Zookeeper)
+  #
+  # A especificacao original pedia bitnami/kafka:3.7, mas a Bitnami retirou o catalogo
+  # publico do Docker Hub em 2025 e a tag deixou de existir. Trocado pela imagem oficial
+  # da Apache, que e mantida. As variaveis sao as mesmas propriedades do broker, apenas
+  # sem o prefixo CFG_ que era convencao da Bitnami. Portas e credenciais nao mudaram.
+  kafka:
+    image: apache/kafka:3.7.2
+    container_name: nutau-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # Broker unico: nao ha replicacao possivel para os topicos internos.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      # Sem espera artificial no rebalanceamento: acelera o boot em desenvolvimento.
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports:
+      - "9092:9092"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
