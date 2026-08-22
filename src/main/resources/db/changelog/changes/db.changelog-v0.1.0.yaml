@@ -1,0 +1,288 @@
+databaseChangeLog:
+
+  # ---------------------------------------------------------------------------
+  # Versao 0.1.0 - schema inicial do Nutau
+  #
+  # Cada versao do sistema tem um changelog proprio, e o master apenas os encadeia.
+  # Assim da para ler o que mudou em cada release sem abrir 20 arquivos soltos, e o
+  # historico do banco acompanha o versionamento da aplicacao.
+  #
+  # Os changesets abaixo criam o schema ja no formato final. Nao ha ALTER TABLE aqui:
+  # alteracao incremental so faz sentido quando o estado anterior existe em algum
+  # ambiente, e a 0.1.0 e a primeira versao. A partir da 0.2.0, sim - quem ja rodou a
+  # 0.1.0 precisa de ALTER, e reescrever o passado quebraria esses ambientes.
+  #
+  # Ordem de criacao ditada pelas chaves estrangeiras:
+  #   usuarios -> cartoes -> solicitacoes_credito -> consultas_bureau
+  # ---------------------------------------------------------------------------
+
+  - changeSet:
+      id: 0.1.0-001-create-table-usuarios
+      author: nutau
+      comment: Cadastro de clientes do banco.
+      changes:
+        - createTable:
+            tableName: usuarios
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_usuarios
+                    nullable: false
+              - column:
+                  name: nome
+                  type: varchar(150)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_usuarios_email
+              - column:
+                  # Armazenado sem mascara: apenas os 11 digitos.
+                  name: cpf
+                  type: varchar(11)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_usuarios_cpf
+              - column:
+                  # Hash BCrypt. A senha em texto puro nunca chega ao banco.
+                  name: senha
+                  type: varchar(72)
+                  constraints:
+                    nullable: false
+              - column:
+                  # Renda declarada na abertura da conta. Base do calculo do limite
+                  # e da categoria do cartao.
+                  name: renda_mensal
+                  type: numeric(15,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: criado_em
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: atualizado_em
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 0.1.0-002-create-table-cartoes
+      author: nutau
+      comment: >-
+        Cartao de credito do cliente. A categoria e uma coluna comum, e nao um
+        discriminator de heranca: promover o cartao de faixa e um UPDATE, preservando o
+        id e o vinculo com as solicitacoes ja registradas.
+      changes:
+        - createTable:
+            tableName: cartoes
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_cartoes
+                    nullable: false
+              - column:
+                  name: usuario_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cartoes_usuario
+                    references: usuarios(id)
+                    # Um cartao por cliente: a unicidade e garantida aqui, no banco,
+                    # e nao apenas por um if no service.
+                    unique: true
+                    uniqueConstraintName: uk_cartoes_usuario
+              - column:
+                  name: categoria
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  # Apenas os 4 ultimos digitos. Numero completo de cartao e dado
+                  # sensivel sob PCI-DSS e nao tem por que existir neste sistema.
+                  name: ultimos_digitos
+                  type: varchar(4)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: limite
+                  type: numeric(15,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: validade_ate
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: criado_em
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: atualizado_em
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 0.1.0-003-create-table-solicitacoes-credito
+      author: nutau
+      comment: >-
+        Pedido de credito e seu status de analise. Dois tipos: emissao do primeiro cartao,
+        em que o cliente nao informa valor, e aumento de limite, em que informa.
+      changes:
+        - createTable:
+            tableName: solicitacoes_credito
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_solicitacoes_credito
+                    nullable: false
+              - column:
+                  name: usuario_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_solicitacoes_usuario
+                    references: usuarios(id)
+              - column:
+                  # Nulo em EMISSAO_CARTAO: o cartao so passa a existir se a analise
+                  # aprovar. Em AUMENTO_LIMITE aponta para o cartao desde o inicio.
+                  name: cartao_id
+                  type: uuid
+                  constraints:
+                    foreignKeyName: fk_solicitacoes_cartao
+                    references: cartoes(id)
+              - column:
+                  name: tipo
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  # Nulo em EMISSAO_CARTAO: o cliente nao escolhe o limite inicial.
+                  name: valor_solicitado
+                  type: numeric(15,2)
+              - column:
+                  # Quanto o banco de fato concedeu. Pode ser menor que o solicitado
+                  # quando o teto da categoria limita o pedido.
+                  name: valor_aprovado
+                  type: numeric(15,2)
+              - column:
+                  name: status
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  # Preenchido apenas quando a solicitacao e negada ou falha.
+                  name: motivo
+                  type: varchar(255)
+              - column:
+                  name: criado_em
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: atualizado_em
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: finalizado_em
+                  type: timestamptz
+        - createIndex:
+            indexName: idx_solicitacoes_usuario_criado
+            tableName: solicitacoes_credito
+            columns:
+              - column:
+                  name: usuario_id
+              - column:
+                  name: criado_em
+                  descending: true
+        - createIndex:
+            indexName: idx_solicitacoes_cartao
+            tableName: solicitacoes_credito
+            columns:
+              - column:
+                  name: cartao_id
+
+  - changeSet:
+      id: 0.1.0-004-create-table-consultas-bureau
+      author: nutau
+      comment: Resultado parcial de cada bureau consultado para uma solicitacao.
+      changes:
+        - createTable:
+            tableName: consultas_bureau
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_consultas_bureau
+                    nullable: false
+              - column:
+                  name: solicitacao_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_consultas_solicitacao
+                    references: solicitacoes_credito(id)
+              - column:
+                  name: bureau
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resultado
+                  type: varchar(30)
+              - column:
+                  name: aprovado
+                  type: boolean
+              - column:
+                  name: tentativas
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: criado_em
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: finalizado_em
+                  type: timestamptz
+        - addUniqueConstraint:
+            # Chave de idempotencia: se a mesma tarefa for reentregue pelo RabbitMQ,
+            # o banco recusa a duplicata em vez de gravar dois resultados.
+            constraintName: uk_consultas_solicitacao_bureau
+            tableName: consultas_bureau
+            columnNames: solicitacao_id, bureau

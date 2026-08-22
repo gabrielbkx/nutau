@@ -1,0 +1,6 @@
+# Encadeia os changelogs de cada versao do sistema, na ordem em que foram lancadas.
+# Uma versao nova entra como um include ao final - nunca editando as anteriores, que ja
+# rodaram em outros ambientes.
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/db.changelog-v0.1.0.yaml
