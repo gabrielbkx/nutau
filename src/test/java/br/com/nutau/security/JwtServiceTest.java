@@ -1,8 +1,6 @@
 package br.com.nutau.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import br.com.nutau.models.entities.Usuario;
 import java.util.UUID;
@@ -98,11 +96,17 @@ class JwtServiceTest {
     @Test
     @DisplayName("UsuarioAutenticado deve expor o CPF como username")
     void usuarioAutenticado_deveExporCpfComoUsername() {
-        Usuario entidade = mock(Usuario.class);
-        when(entidade.getId()).thenReturn(usuarioId);
-        when(entidade.getNome()).thenReturn("Maria");
-        when(entidade.getCpf()).thenReturn("99988877766");
-        when(entidade.getSenha()).thenReturn("hash");
+        // Objeto real, nao mock: Usuario e uma entidade sem comportamento a simular,
+        // e mockar classe concreta so aqui obrigava o Mockito a reescrever bytecode -
+        // o que quebra a cada JDK novo, sem nada em troca.
+        Usuario entidade = Usuario.builder()
+                .id(usuarioId)
+                .nome("Maria")
+                .email("maria@exemplo.com")
+                .cpf("99988877766")
+                .senha("$2a$12$hashfalso")
+                .rendaMensal(new java.math.BigDecimal("4000.00"))
+                .build();
 
         assertThat(new UsuarioAutenticado(entidade).getUsername()).isEqualTo("99988877766");
     }
