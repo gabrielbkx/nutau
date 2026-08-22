@@ -1,0 +1,92 @@
+spring:
+  application:
+    name: nutau
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5433}/${POSTGRES_DB:nutau_db}
+    username: ${POSTGRES_USER:admin}
+    password: ${POSTGRES_PASSWORD:adminpassword}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: nutau-pool
+      maximum-pool-size: 10
+
+  jpa:
+    hibernate:
+      # O schema e responsabilidade exclusiva do Liquibase. Hibernate nunca altera tabela.
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: America/Sao_Paulo
+        format_sql: true
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASSWORD:adminpassword}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# ---------------------------------------------------------------------------
+# Configuracoes proprias da aplicacao
+# ---------------------------------------------------------------------------
+nutau:
+  jwt:
+    # Chave HMAC-SHA em Base64. Em producao SEMPRE vem de variavel de ambiente
+    # ou cofre de segredos - o default abaixo existe so para o ambiente local.
+    secret: ${JWT_SECRET:bnV0YXUtY2hhdmUtbG9jYWwtZGUtZGVzZW52b2x2aW1lbnRvLW5hby11c2FyLWVtLXByb2R1Y2FvLTIwMjU=}
+    # Validade do token em minutos.
+    expiracao-minutos: ${JWT_EXPIRACAO_MINUTOS:120}
+    emissor: nutau-api
+
+  bureau:
+    # Latencia simulada da consulta ao bureau, em milissegundos.
+    latencia-ms: ${BUREAU_LATENCIA_MS:2500}
+
+  # Politica de credito do banco. Concentrada aqui para que mudar as regras de
+  # concessao nao exija recompilar nada.
+  cartao:
+    # Percentuais, tetos, anuidade e cashback vivem no enum CategoriaCartao - a regra de
+    # quanto cada faixa concede pertence a propria faixa. Aqui ficam apenas os parametros
+    # que valem para todas elas.
+    #
+    # Piso do limite inicial, para que rendas muito baixas nao gerem cartao inutil.
+    limite-minimo: 100.00
+    validade-anos: 5
+
+  resend:
+    api-url: https://api.resend.com/emails
+    api-key: ${RESEND_API_KEY:}
+    remetente: ${RESEND_REMETENTE:Nutau <onboarding@resend.dev>}
+    # Com false, o e-mail e apenas logado no console em vez de enviado de verdade.
+    habilitado: ${RESEND_HABILITADO:false}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    br.com.nutau: DEBUG
+    org.springframework.security: INFO
