@@ -19,5 +19,6 @@ public record UsuarioResponse(
         @Schema(description = "CPF mascarado", example = "***.456.789-**")
         String cpf,
         BigDecimal rendaMensal,
+        EnderecoResponse endereco,
         OffsetDateTime criadoEm) {
 }

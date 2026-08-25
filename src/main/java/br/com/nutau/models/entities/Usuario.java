@@ -1,6 +1,7 @@
 package br.com.nutau.models.entities;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
@@ -58,6 +59,16 @@ public class Usuario {
      */
     @Column(name = "renda_mensal", nullable = false, precision = 15, scale = 2)
     private BigDecimal rendaMensal;
+
+    /**
+     * Endereco residencial, gravado nas colunas da propria tabela {@code usuarios}.
+     *
+     * <p>Cadastros anteriores a versao 0.2.0 do schema nao possuem endereco: as colunas
+     * aceitam nulo por isso. A obrigatoriedade vale para quem se cadastra a partir de
+     * agora e e garantida na entrada, pelo {@code @NotNull} do CadastroRequest.
+     */
+    @Embedded
+    private Endereco endereco;
 
     @Column(name = "criado_em", nullable = false, updatable = false)
     private OffsetDateTime criadoEm;

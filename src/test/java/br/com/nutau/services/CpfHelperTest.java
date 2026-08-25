@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import br.com.nutau.models.dtos.CadastroRequest;
+import br.com.nutau.models.dtos.EnderecoRequest;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -38,7 +39,8 @@ class CpfHelperTest {
     private static CadastroRequest cadastroCom(String cpf) {
         return new CadastroRequest(
                 "Cliente Teste", "cliente@exemplo.com", cpf, "senhaSegura123",
-                new BigDecimal("4000.00"));
+                new BigDecimal("4000.00"),
+                new EnderecoRequest("01001-000", "1500", null));
     }
 
     /** Erros de validacao apenas do campo cpf. */

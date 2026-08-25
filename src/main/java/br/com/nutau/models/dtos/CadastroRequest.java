@@ -1,6 +1,7 @@
 package br.com.nutau.models.dtos;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Email;
@@ -54,5 +55,13 @@ public record CadastroRequest(
         @NotNull(message = "Renda mensal e obrigatoria")
         @DecimalMin(value = "500.00", message = "A renda minima aceita e R$ 500,00")
         @Digits(integer = 13, fraction = 2, message = "Renda deve ter no maximo 2 casas decimais")
-        BigDecimal rendaMensal) {
+        BigDecimal rendaMensal,
+        /*
+         * O @Valid e o que faz as regras internas do EnderecoRequest valerem. Sem ele o
+         * Bean Validation confere apenas que o objeto nao e nulo e ignora os campos
+         * dentro dele - um CEP vazio passaria direto para o service.
+         */
+        @Valid
+        @NotNull(message = "Endereco e obrigatorio")
+        EnderecoRequest endereco) {
 }
