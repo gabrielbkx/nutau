@@ -38,6 +38,10 @@ public enum ErrorCode {
     USUARIO_NAO_ENCONTRADO(HttpStatus.NOT_FOUND, "Usuario nao encontrado"),
     SOLICITACAO_NAO_ENCONTRADA(HttpStatus.NOT_FOUND, "Solicitacao nao encontrada"),
     CONSULTA_NAO_ENCONTRADA(HttpStatus.NOT_FOUND, "Consulta ao bureau nao encontrada"),
+    /** O CEP nao existe na base dos Correios, ou foi recusado pelo ViaCEP. */
+    CEP_NAO_ENCONTRADO(
+            HttpStatus.NOT_FOUND,
+            "CEP nao encontrado. Confira o numero digitado."),
     CARTAO_NAO_ENCONTRADO(
             HttpStatus.NOT_FOUND,
             "Voce ainda nao possui cartao. Solicite a emissao antes de pedir aumento."),
@@ -67,6 +71,17 @@ public enum ErrorCode {
     BUREAU_INDISPONIVEL(
             HttpStatus.SERVICE_UNAVAILABLE,
             "Servico de consulta de credito temporariamente indisponivel",
+            true),
+    /**
+     * O ViaCEP nao respondeu.
+     *
+     * <p>Distinto de {@code CEP_NAO_ENCONTRADO} de proposito: aqui nada indica que o CEP
+     * seja invalido - a consulta e que falhou. Por isso 503 e retentavel, enquanto o
+     * outro e 404 definitivo.
+     */
+    CEP_SERVICO_INDISPONIVEL(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "Nao foi possivel consultar o CEP no momento. Tente novamente em instantes.",
             true),
     FALHA_ENVIO_EMAIL(
             HttpStatus.SERVICE_UNAVAILABLE,
