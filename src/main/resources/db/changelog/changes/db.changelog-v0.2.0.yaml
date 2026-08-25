@@ -1,0 +1,65 @@
+databaseChangeLog:
+
+  # ---------------------------------------------------------------------------
+  # Versao 0.2.0 - endereco do cliente
+  #
+  # Primeira versao incremental do schema. Diferente da 0.1.0, que criou tabelas do
+  # zero, aqui existem ambientes com a 0.1.0 ja aplicada e linhas gravadas - por isso
+  # ALTER TABLE, e por isso a 0.1.0 permanece intocada.
+  #
+  # As colunas entram aceitando nulo, e a razao e o dado que ja existe: clientes
+  # cadastrados antes desta versao nao informaram endereco. Declarar NOT NULL exigiria
+  # inventar um valor para eles - um endereco falso no banco, indistinguivel de um
+  # verdadeiro. A obrigatoriedade do endereco vale para quem se cadastra a partir de
+  # agora e e imposta na entrada da API, pelo @NotNull do CadastroRequest.
+  # ---------------------------------------------------------------------------
+
+  - changeSet:
+      id: 0.2.0-001-add-columns-endereco-usuarios
+      author: nutau
+      comment: Endereco residencial do cliente, preenchido a partir do CEP via ViaCEP.
+      changes:
+        - addColumn:
+            tableName: usuarios
+            columns:
+              - column:
+                  # Armazenado sem mascara: apenas os 8 digitos, como o CPF.
+                  name: cep
+                  type: varchar(8)
+              - column:
+                  name: logradouro
+                  type: varchar(150)
+              - column:
+                  # Texto, nao numero: "1500-A" e "S/N" sao numeros de endereco validos.
+                  name: numero
+                  type: varchar(10)
+              - column:
+                  name: complemento
+                  type: varchar(60)
+              - column:
+                  name: bairro
+                  type: varchar(100)
+              - column:
+                  name: cidade
+                  type: varchar(100)
+              - column:
+                  name: uf
+                  type: varchar(2)
+      rollback:
+        - dropColumn:
+            tableName: usuarios
+            columns:
+              - column:
+                  name: cep
+              - column:
+                  name: logradouro
+              - column:
+                  name: numero
+              - column:
+                  name: complemento
+              - column:
+                  name: bairro
+              - column:
+                  name: cidade
+              - column:
+                  name: uf
