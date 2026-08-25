@@ -1,8 +1,11 @@
 package br.com.nutau.mappers;
 
 import br.com.nutau.models.dtos.CadastroRequest;
+import br.com.nutau.models.dtos.EnderecoResponse;
 import br.com.nutau.models.dtos.UsuarioResponse;
+import br.com.nutau.models.entities.Endereco;
 import br.com.nutau.models.entities.Usuario;
+import br.com.nutau.services.CepHelper;
 import br.com.nutau.services.CpfHelper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -28,6 +31,10 @@ public interface UsuarioMapper {
      * <p>A senha entra ja em hash, como parametro separado: codificar senha e decisao de
      * seguranca e pertence ao service, nao a uma camada de conversao de tipos. O mapper
      * jamais deve ver a senha em texto puro.
+     *
+     * <p>O endereco chega pelo mesmo motivo, ja montado: preenche-lo exige consultar o
+     * ViaCEP, e chamada a servico externo nao pertence a uma camada de conversao de tipos.
+     * O mapper recebe o resultado pronto e apenas o acomoda na entidade.
      */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "criadoEm", ignore = true)
@@ -37,11 +44,22 @@ public interface UsuarioMapper {
     @Mapping(target = "email", source = "request.email", qualifiedByName = "normalizarEmail")
     @Mapping(target = "cpf", source = "request.cpf", qualifiedByName = "normalizarCpf")
     @Mapping(target = "rendaMensal", source = "request.rendaMensal")
-    Usuario toEntity(CadastroRequest request, String senhaHash);
+    @Mapping(target = "endereco", source = "endereco")
+    Usuario toEntity(CadastroRequest request, String senhaHash, Endereco endereco);
 
     /** Representacao publica do cliente. A senha nao existe no destino, logo nunca vaza. */
     @Mapping(target = "cpf", source = "cpf", qualifiedByName = "mascararCpf")
     UsuarioResponse toResponse(Usuario usuario);
+
+    /**
+     * Endereco na resposta da API.
+     *
+     * <p>Unica diferenca em relacao ao que esta no banco: o CEP volta com hifen. Guardar
+     * so digitos e exibir formatado mantem uma unica representacao persistida sem obrigar
+     * quem consome a API a formatar por conta propria.
+     */
+    @Mapping(target = "cep", source = "cep", qualifiedByName = "formatarCep")
+    EnderecoResponse toResponse(Endereco endereco);
 
     @Named("aparar")
     default String aparar(String valor) {
@@ -69,5 +87,11 @@ public interface UsuarioMapper {
     @Named("mascararCpf")
     default String mascararCpf(String cpf) {
         return CpfHelper.mascarar(cpf);
+    }
+
+    /** CEP exibido no formato 00000-000. */
+    @Named("formatarCep")
+    default String formatarCep(String cep) {
+        return CepHelper.formatar(cep);
     }
 }
