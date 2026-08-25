@@ -67,6 +67,14 @@ nutau:
     limite-minimo: 100.00
     validade-anos: 5
 
+  viacep:
+    # Consulta de endereco por CEP. Servico publico, sem chave de API.
+    url: ${VIACEP_URL:https://viacep.com.br/ws}
+    # Timeouts explicitos: sem eles o cliente HTTP espera para sempre e uma
+    # indisponibilidade do ViaCEP viraria requisicao de cadastro pendurada.
+    timeout-conexao-ms: ${VIACEP_TIMEOUT_CONEXAO_MS:3000}
+    timeout-leitura-ms: ${VIACEP_TIMEOUT_LEITURA_MS:5000}
+
   resend:
     api-url: https://api.resend.com/emails
     api-key: ${RESEND_API_KEY:}
